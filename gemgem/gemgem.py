@@ -67,7 +67,7 @@ EMPTY_SPACE = -1 # an arbitrary, nonpositive value
 ROWABOVEBOARD = 'row above board' # an arbitrary, noninteger value
 
 def main():
-    global FPSCLOCK, DISPLAYSURF, GEMIMAGES, GAMESOUNDS, BASICFONT, BOARDRECTS
+    global FPSCLOCK, DISPLAYSURF, GEMIMAGES, BASICFONT, BOARDRECTS
 
     # Initial set up.
     pygame.init()
@@ -83,13 +83,6 @@ def main():
         if gemImage.get_size() != (GEMIMAGESIZE, GEMIMAGESIZE):
             gemImage = pygame.transform.smoothscale(gemImage, (GEMIMAGESIZE, GEMIMAGESIZE))
         GEMIMAGES.append(gemImage)
-
-    # Load the sounds.
-    GAMESOUNDS = {}
-    GAMESOUNDS['bad swap'] = pygame.mixer.Sound('badswap.wav')
-    GAMESOUNDS['match'] = []
-    for i in range(NUMMATCHSOUNDS):
-        GAMESOUNDS['match'].append(pygame.mixer.Sound('match%s.wav' % i))
 
     # Create pygame.Rect objects for each board space to
     # do board-coordinate-to-pixel-coordinate conversions.
@@ -174,7 +167,6 @@ def runGame():
             matchedGems = findMatchingGems(gameBoard)
             if matchedGems == []:
                 # Was not a matching move; swap the gems back
-                GAMESOUNDS['bad swap'].play()
                 animateMovingGems(boardCopy, [firstSwappingGem, secondSwappingGem], [], score)
                 gameBoard[firstSwappingGem['x']][firstSwappingGem['y']] = firstSwappingGem['imageNum']
                 gameBoard[secondSwappingGem['x']][secondSwappingGem['y']] = secondSwappingGem['imageNum']
@@ -196,7 +188,6 @@ def runGame():
                         points.append({'points': scoreAdd,
                                        'x': gem[0] * GEMIMAGESIZE + XMARGIN,
                                        'y': gem[1] * GEMIMAGESIZE + YMARGIN})
-                    random.choice(GAMESOUNDS['match']).play()
                     score += scoreAdd
 
                     # Drop the new gems.
