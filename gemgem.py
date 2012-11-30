@@ -65,7 +65,7 @@ class Generalizer(object):
         newWeights = [None] * len(weights)
         for board, vtrain in trainingSet:
             for i, w in enumerate(weights):
-                newWeights[i] = w + eta * (vtrain - targetfunc(board, weights)) * extractFeatures(board) * i
+                newWeights[i] = w + cls.eta * (vtrain - targetfunc(board, weights)) * extractFeatures(board)[i]
         return newWeights
 
 def extractFeatures(board):
@@ -74,7 +74,7 @@ def extractFeatures(board):
     num3 = len(filter(lambda x: len(x) == 3, gemsToRemove))
     num4 = len(filter(lambda x: len(x) == 4, gemsToRemove))
     num5 = len(filter(lambda x: len(x) == 5, gemsToRemove))
-    return [1, num3, num4, num5]
+    return [1., num3, num4, num5]
 
 def targetfunc(state, weights):
     features = extractFeatures(state)
@@ -91,9 +91,9 @@ class Mediator(object):
             gameTrace = board.getTrace()
 
             trainingSet = Critic.genTraining(gameTrace, board.score, self.player.weights)
-            print 'weights:', weights
+            print 'weights:', self.player.weights, 'score:', board.score
             weights = Generalizer.updateHypothesis(self.player.weights, trainingSet)
-            print 'weights:', weights
+            print 'weights:', self.player.weights
             self.player.weights = weights
 
     def runEpisode(self, board, player):
@@ -117,10 +117,11 @@ class Mediator(object):
 # Player is the agent/performance system
 class Player(object):
     def __init__(self):
-        self.weights = [1, 1, 1, 1]
+        self.weights = [1., 1., 1., 1.]
     def getAction(self, state):
         actions = self.genActions(state)
-        return self.chooseAction(state, actions)
+        action = self.chooseAction(state, actions)
+        return action
     def genActions(self, state):
         # return all possible moves that result in a match
         return possibleMoves(state)
@@ -152,11 +153,10 @@ class Board(object):
         self.gameover = False
     def getObs(self):
         return self.board
-    def getTrace():
+    def getTrace(self):
         return self.trace
     def doAction(self, action):
         scoreAdd = 0
-        print action
         firstSelectedGem = {'x': action[0][0], 'y': action[0][1]}
         clickedSpace = {'x': action[1][0], 'y': action[1][1]}
         # Two gems have been clicked on and selected. Swap the gems.
@@ -174,13 +174,13 @@ class Board(object):
         # See if this is a matching move.
         matchedGems = findMatchingGems(self.board)
         if matchedGems == []:
-            print 'did not cause a match'
+            assert False, 'did not cause a match'
             # Was not a matching move; swap the gems back
             self.board[firstSwappingGem['x']][firstSwappingGem['y']] = firstSwappingGem['imageNum']
             self.board[secondSwappingGem['x']][secondSwappingGem['y']] = secondSwappingGem['imageNum']
         else:
             # This was a matching move.
-            self.trace.append(self.board)
+            self.trace.append(copy.deepcopy(self.board))
             while matchedGems != []:
                 # Remove matched gems, then pull down the board.
 
@@ -188,8 +188,6 @@ class Board(object):
                     scoreAdd += (10 + (len(gemSet) - 3) * 10)
                     for gem in gemSet:
                         self.board[gem[0]][gem[1]] = EMPTY_SPACE
-                print 'matched! you get points:', scoreAdd
-                pprint(self.board)
                 self.score += scoreAdd
 
                 # Drop the new gems.
@@ -199,7 +197,10 @@ class Board(object):
                 matchedGems = findMatchingGems(self.board)
         firstSelectedGem = None
 
-        if not canMakeMove(self.board) or len(self.trace) > MAX_ITERS:
+        if len(self.trace) > MAX_ITERS:
+            self.gameover = True
+        if not canMakeMove(self.board):
+            print 'game ended at iter %s, no more moves available' % len(self.trace)
             self.gameover = True
         return scoreAdd
 
@@ -255,8 +256,8 @@ def possibleMoves(board):
                       ((0,1), (1,0), (2,1),    ((1,0), (1,1))),
                       ((0,0), (1,0), (2,1),    ((2,0), (2,1))),
                       ((0,0), (1,1), (2,1),    ((0,0), (0,1))),
-                      ((0,0), (0,2), (0,3),    ((0,0), (1,0))),
-                      ((0,0), (0,1), (0,3),    ((2,0), (3,0))))
+                      ((0,0), (0,2), (0,3),    ((0,0), (0,1))),
+                      ((0,0), (0,1), (0,3),    ((0,2), (0,3))))
 
     # The x and y variables iterate over each space on the board.
     # If we use + to represent the currently iterated space on the
@@ -345,6 +346,8 @@ def findMatchingGems(board):
     # loop through each space, checking for 3 adjacent identical gems
     for x in range(BOARDWIDTH):
         for y in range(BOARDHEIGHT):
+            # TODO: make 3x3 L/T-shape matches work
+
             # look for horizontal matches
             if getGemAt(boardCopy, x, y) == getGemAt(boardCopy, x + 1, y) == getGemAt(boardCopy, x + 2, y) and getGemAt(boardCopy, x, y) != EMPTY_SPACE:
                 targetGem = boardCopy[x][y]
