@@ -22,10 +22,12 @@ BOARDWIDTH = 8 # how many columns in the board
 BOARDHEIGHT = 8 # how many rows in the board
 
 DEDUCTSPEED = 0.8 # reduces score by 1 point every DEDUCTSPEED seconds.
-GEMLABELS = [0,1,2,3,4,5,6]
+GEMLABELS = [0,1,2,3,4,5]
 
 NUMGEMTYPES = len(GEMLABELS)
 assert NUMGEMTYPES >= 5 # game needs at least 5 types of gems to work
+
+MAX_ITERS = 100
 
 # constants for direction values
 UP = 'up'
@@ -37,75 +39,169 @@ EMPTY_SPACE = -1 # an arbitrary, nonpositive value
 ROWABOVEBOARD = 'row above board' # an arbitrary, noninteger value
 
 def main():
-    while True:
-        runGame()
+    m = Mediator()
+    m.runExperiment()
 
+class Critic(object):
+    @classmethod
+    def genTraining(cls, gameTrace, score, weights):
+        # for each game state, find V_train
+        training = []
+        for i in range(len(gameTrace) - 1):
+            state = gameTrace[i]
+            successor = gameTrace[i + 1]
 
-def runGame():
-    # Plays through a single game. When the game is over, this function returns.
+            vtrain = targetfunc(successor, weights)
+            training.append([state, vtrain])
+        # add final state and corresponding score
+        #training.append([gameTrace[-1], score)
+        return training
 
-    # initalize the board
-    gameBoard = getBlankBoard()
-    score = 0
-    fillBoardAndAnimate(gameBoard, [], score) # Drop the initial gems.
+class Generalizer(object):
+    # learning rate
+    eta = 0.1
+    @classmethod
+    def updateHypothesis(cls, weights, trainingSet):
+        newWeights = [None] * len(weights)
+        for board, vtrain in trainingSet:
+            for i, w in enumerate(weights):
+                newWeights[i] = w + eta * (vtrain - targetfunc(board, weights)) * extractFeatures(board) * i
+        return newWeights
 
-    # initialize variables for the start of a new game
-    firstSelectedGem = None
-    gameIsOver = False
-    lastScoreDeduction = time.time()
+def extractFeatures(board):
+    # count 3/4/5-in-a-rows on the board
+    gemsToRemove = findMatchingGems(board)
+    num3 = len(filter(lambda x: len(x) == 3, gemsToRemove))
+    num4 = len(filter(lambda x: len(x) == 4, gemsToRemove))
+    num5 = len(filter(lambda x: len(x) == 5, gemsToRemove))
+    return [1, num3, num4, num5]
 
-    while True: # main game loop
-        print 'score:', score
-        pprint(gameBoard)
-        print 'swap:'
-        row1 = int(raw_input('1st row:'))
-        col1 = int(raw_input('1st col:'))
-        row2 = int(raw_input('2nd row:'))
-        col2 = int(raw_input('2nd col:'))
-        firstSelectedGem = {'x': row1, 'y': col1}
-        clickedSpace = {'x': row2, 'y': col2}
+def targetfunc(state, weights):
+    features = extractFeatures(state)
+    return sum((features[i] * weights[i] for i in range(len(weights))))
+
+class Mediator(object):
+    def __init__(self):
+        self.player = Player()
+    def runExperiment(self):
+        for i in range(10):
+            board = Board()
+            self.runEpisode(board, self.player)
+
+            gameTrace = board.getTrace()
+
+            trainingSet = Critic.genTraining(gameTrace, board.score, self.player.weights)
+            print 'weights:', weights
+            weights = Generalizer.updateHypothesis(self.player.weights, trainingSet)
+            print 'weights:', weights
+            self.player.weights = weights
+
+    def runEpisode(self, board, player):
+        while not board.gameover:
+            state = board.getObs()
+            action = player.getAction(state)
+
+            #print 'score:', board.score
+            #pprint(board.getObs())
+            #print 'swap:'
+            #row1 = int(raw_input('1st row:'))
+            #col1 = int(raw_input('1st col:'))
+            #row2 = int(raw_input('2nd row:'))
+            #col2 = int(raw_input('2nd col:'))
+            #action = [{'x': row1, 'y':col1}, {'x': row2, 'y': col2}]
+
+            reward = board.doAction(action)
+            player.getReward(reward)
+        
+
+# Player is the agent/performance system
+class Player(object):
+    def __init__(self):
+        self.weights = [1, 1, 1, 1]
+    def getAction(self, state):
+        actions = self.genActions(state)
+        return self.chooseAction(state, actions)
+    def genActions(self, state):
+        # return all possible moves that result in a match
+        return possibleMoves(state)
+    def chooseAction(self, state, actions):
+        values = []
+        for a in actions:
+            state = swap(state, a)
+            values.append({'value':targetfunc(state, self.weights), 'action':a})
+            state = swap(state, a)
+        # return the move that gives board with the largest targetfunc value
+        return max(values, key=lambda x: x['value'])['action']
+    def getReward(self, reward):
+        pass
+
+def swap(board, pair):
+    return board
+
+# Board is the environment (used by performance system)
+class Board(object):
+    def __init__(self):
+        # initalize the board
+        self.board = getBlankBoard()
+        self.score = 0
+        self.trace = []
+        fillBoard(self.board) # Drop the initial gems.
+
+        # initialize variables for the start of a new game
+        firstSelectedGem = None
+        self.gameover = False
+    def getObs(self):
+        return self.board
+    def getTrace():
+        return self.trace
+    def doAction(self, action):
+        scoreAdd = 0
+        print action
+        firstSelectedGem = {'x': action[0][0], 'y': action[0][1]}
+        clickedSpace = {'x': action[1][0], 'y': action[1][1]}
         # Two gems have been clicked on and selected. Swap the gems.
-        firstSwappingGem, secondSwappingGem = getSwappingGems(gameBoard, firstSelectedGem, clickedSpace)
+        firstSwappingGem, secondSwappingGem = getSwappingGems(self.board, firstSelectedGem, clickedSpace)
         if firstSwappingGem == None and secondSwappingGem == None:
             # If both are None, then the gems were not adjacent
             print 'gems not adjacent'
             firstSelectedGem = None # deselect the first gem
-            continue
+            return 0
 
         # Swap the gems in the board data structure.
-        gameBoard[firstSwappingGem['x']][firstSwappingGem['y']] = secondSwappingGem['imageNum']
-        gameBoard[secondSwappingGem['x']][secondSwappingGem['y']] = firstSwappingGem['imageNum']
+        self.board[firstSwappingGem['x']][firstSwappingGem['y']] = secondSwappingGem['imageNum']
+        self.board[secondSwappingGem['x']][secondSwappingGem['y']] = firstSwappingGem['imageNum']
 
         # See if this is a matching move.
-        matchedGems = findMatchingGems(gameBoard)
+        matchedGems = findMatchingGems(self.board)
         if matchedGems == []:
             print 'did not cause a match'
             # Was not a matching move; swap the gems back
-            gameBoard[firstSwappingGem['x']][firstSwappingGem['y']] = firstSwappingGem['imageNum']
-            gameBoard[secondSwappingGem['x']][secondSwappingGem['y']] = secondSwappingGem['imageNum']
+            self.board[firstSwappingGem['x']][firstSwappingGem['y']] = firstSwappingGem['imageNum']
+            self.board[secondSwappingGem['x']][secondSwappingGem['y']] = secondSwappingGem['imageNum']
         else:
             # This was a matching move.
-            scoreAdd = 0
+            self.trace.append(self.board)
             while matchedGems != []:
                 # Remove matched gems, then pull down the board.
 
                 for gemSet in matchedGems:
                     scoreAdd += (10 + (len(gemSet) - 3) * 10)
                     for gem in gemSet:
-                        gameBoard[gem[0]][gem[1]] = EMPTY_SPACE
+                        self.board[gem[0]][gem[1]] = EMPTY_SPACE
                 print 'matched! you get points:', scoreAdd
-                pprint(gameBoard)
-                score += scoreAdd
+                pprint(self.board)
+                self.score += scoreAdd
 
                 # Drop the new gems.
-                fillBoardAndAnimate(gameBoard, [], score)
+                fillBoard(self.board)
 
                 # Check if there are any new matches.
-                matchedGems = findMatchingGems(gameBoard)
+                matchedGems = findMatchingGems(self.board)
         firstSelectedGem = None
 
-        if not canMakeMove(gameBoard):
-            gameIsOver = True
+        if not canMakeMove(self.board) or len(self.trace) > MAX_ITERS:
+            self.gameover = True
+        return scoreAdd
 
 def getSwappingGems(board, firstXY, secondXY):
     # If the gems at the (X, Y) coordinates of the two gems are adjacent,
@@ -146,19 +242,21 @@ def getBlankBoard():
 
 
 def canMakeMove(board):
+    return len(possibleMoves(board)) > 0
+def possibleMoves(board):
     # Return True if the board is in a state where a matching
     # move can be made on it. Otherwise return False.
 
     # The patterns in oneOffPatterns represent gems that are configured
     # in a way where it only takes one move to make a triplet.
-    oneOffPatterns = (((0,1), (1,0), (2,0)),
-                      ((0,1), (1,1), (2,0)),
-                      ((0,0), (1,1), (2,0)),
-                      ((0,1), (1,0), (2,1)),
-                      ((0,0), (1,0), (2,1)),
-                      ((0,0), (1,1), (2,1)),
-                      ((0,0), (0,2), (0,3)),
-                      ((0,0), (0,1), (0,3)))
+    oneOffPatterns = (((0,1), (1,0), (2,0),    ((0,0), (0,1))),
+                      ((0,1), (1,1), (2,0),    ((2,0), (2,1))),
+                      ((0,0), (1,1), (2,0),    ((1,0), (1,1))),
+                      ((0,1), (1,0), (2,1),    ((1,0), (1,1))),
+                      ((0,0), (1,0), (2,1),    ((2,0), (2,1))),
+                      ((0,0), (1,1), (2,1),    ((0,0), (0,1))),
+                      ((0,0), (0,2), (0,3),    ((0,0), (1,0))),
+                      ((0,0), (0,1), (0,3),    ((2,0), (3,0))))
 
     # The x and y variables iterate over each space on the board.
     # If we use + to represent the currently iterated space on the
@@ -176,6 +274,7 @@ def canMakeMove(board):
     # There are eight possible ways for the gems to be one move
     # away from forming a triple, hence oneOffPattern has 8 patterns.
 
+    moves = []
     for x in range(BOARDWIDTH):
         for y in range(BOARDHEIGHT):
             for pat in oneOffPatterns:
@@ -183,12 +282,13 @@ def canMakeMove(board):
                 # see if a possible move can be made.
                 if (getGemAt(board, x+pat[0][0], y+pat[0][1]) == \
                     getGemAt(board, x+pat[1][0], y+pat[1][1]) == \
-                    getGemAt(board, x+pat[2][0], y+pat[2][1]) != None) or \
-                   (getGemAt(board, x+pat[0][1], y+pat[0][0]) == \
+                    getGemAt(board, x+pat[2][0], y+pat[2][1]) != None):
+                    moves.append(map(lambda z: (z[0] + x, z[1] + y), pat[3]))
+                if (getGemAt(board, x+pat[0][1], y+pat[0][0]) == \
                     getGemAt(board, x+pat[1][1], y+pat[1][0]) == \
                     getGemAt(board, x+pat[2][1], y+pat[2][0]) != None):
-                    return True # return True the first time you find a pattern
-    return False
+                    moves.append(map(lambda z: (z[1] + x, z[0] + y), pat[3]))
+    return moves
 
 
 def pullDownAllGems(board):
@@ -307,7 +407,7 @@ def moveGems(board, movingGems):
             board[gem['x']][0] = gem['imageNum'] # move to top row
 
 
-def fillBoardAndAnimate(board, points, score):
+def fillBoard(board):
     dropSlots = getDropSlots(board)
     while dropSlots != [[]] * BOARDWIDTH:
         # do the dropping animation as long as there are more gems to drop
