@@ -1,0 +1,3 @@
+[submodule "pybrain"]
+	path = pybrain
+	url = git://github.com/pybrain/pybrain.git
