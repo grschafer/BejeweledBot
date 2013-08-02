@@ -79,3 +79,14 @@ Run the rl.py script with the -h flag to get more help with arguments:
                             Set animation speed, can be between 1-100; has no
                             effect if --demo flag not set; default=25
     
+
+THANKS
+======
+
+* Al Sweigart for his [Bejeweled implementation in pygame][bejeweled] that      
+allowed me to demo the program graphically and helped me understand what the    
+learner was doing!                                                              
+* Osmic for the [icons][gems] used in Al's game
+
+[bejeweled]: http://inventwithpython.com/blog/2011/06/24/new-game-source-code-gemgem-a-bejeweled-clone/
+[gems]: http://opengameart.org/content/gem-jewel-diamond-glass
