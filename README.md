@@ -1,15 +1,13 @@
-Greg Schafer
-CSCE 478
-Dec 10, 2012
+Greg Schafer - CSCE 478 - Dec 10, 2012
 
 Project - Reinforcement Learning Bejeweled
 
-========================
-===== DEPENDENCIES =====
-========================
+DEPENDENCIES
+============
 
--PyBrain
--SciPy/NumPy
+* PyBrain
+* SciPy/NumPy
+* Pygame (if -d/--demo flag is set)
 
 This code depends on the PyBrain library, which should be installed by running
 "pip install PyBrain" or by running the setup.py in the included PyBrain
@@ -20,9 +18,8 @@ is already installed on cse.unl.edu and is commonly installed with Python
 itself.
 
 
-============================
-===== RUNNING THE CODE =====
-============================
+RUNNING THE CODE
+================
 
 All run options will print to stdout the following 2 accuracy measurements:
 
@@ -54,32 +51,31 @@ of graphical animations, respectively:
     python rl.py --demo --boardsize 16 --speed 75
 
 
-==============================
-===== MORE CMD-LINE HELP =====
-==============================
+MORE CMD-LINE HELP
+==================
 
 Run the rl.py script with the -h flag to get more help with arguments:
 
-usage: rl.py [-h] [-d] [-f PARAMFILE] [-o OUTFILE] [-b BOARDSIZE] [-g {5,6,7}]
+    usage: rl.py [-h] [-d] [-f PARAMFILE] [-o OUTFILE] [-b BOARDSIZE] [-g {5,6,7}]
              [-s SPEED]
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -d, --demo            Show the learner playing on a graphical board
-  -f PARAMFILE, --paramfile PARAMFILE
-                        Provide a file containing existing training weights
-                        formatted as a Python pickled object (e.g. the
-                        params_trained file in this directory)
-  -o OUTFILE, --outfile OUTFILE
-                        Save training weights to this file on program exit
-  -b BOARDSIZE, --boardsize BOARDSIZE
-                        Set height and width of Bejeweled board, must be at
-                        least 4 (for a 4x4 board); has no effect if --demo
-                        flag not set (all training is done on 4x4); default=8
-  -g {5,6,7}, --gemtypes {5,6,7}
-                        Set number of different color gems, can be between
-                        5-7; default=7
-  -s SPEED, --speed SPEED
-                        Set animation speed, can be between 1-100; has no
-                        effect if --demo flag not set; default=25
-
+    
+    optional arguments:
+      -h, --help            show this help message and exit
+      -d, --demo            Show the learner playing on a graphical board
+      -f PARAMFILE, --paramfile PARAMFILE
+                            Provide a file containing existing training weights
+                            formatted as a Python pickled object (e.g. the
+                            params_trained file in this directory)
+      -o OUTFILE, --outfile OUTFILE
+                            Save training weights to this file on program exit
+      -b BOARDSIZE, --boardsize BOARDSIZE
+                            Set height and width of Bejeweled board, must be at
+                            least 4 (for a 4x4 board); has no effect if --demo
+                            flag not set (all training is done on 4x4); default=8
+      -g {5,6,7}, --gemtypes {5,6,7}
+                            Set number of different color gems, can be between
+                            5-7; default=7
+      -s SPEED, --speed SPEED
+                            Set animation speed, can be between 1-100; has no
+                            effect if --demo flag not set; default=25
+    
